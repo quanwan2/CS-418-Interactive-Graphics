@@ -1,0 +1,133 @@
+<!DOCTYPE HTML> 
+<html lang="en"> 
+<head>
+<title>CS418 MP3 quanwan2</title>
+<meta charset="utf-8"> 
+</head> 
+<script id="shader-vs" type="x-shader/x-vertex">
+   attribute vec3 aVertexPosition;
+   attribute vec3 aVertexNormal;
+   // Uniform matrices
+   uniform mat4 uMVMatrix;
+   uniform mat4 uPMatrix;
+   uniform mat3 uNMatrix;
+   // ... 
+   varying vec4 vColor;
+   varying vec4 vPosition;
+   varying vec3 vTransformedNormal;
+   // ...
+   uniform vec3 uLightPosition;
+   uniform vec3 uAmbientLightColor;
+   uniform vec3 uDiffuseLightColor;
+   uniform vec3 uSpecularLightColor;
+   const float shininess = 2.0;
+   // We apply Phong-Shading
+   void main(void) { 
+    
+     vPosition = uMVMatrix*vec4(aVertexPosition, 1.0);
+     gl_Position= uPMatrix*vPosition;
+     vTransformedNormal = uNMatrix*aVertexNormal;
+     // uLightPosition = uPMatrix*uMVMatrix*vec4(uLightPosition, 1.0);
+     // uAmbientLightColor = uPMatrix*uMVMatrix*vec4(uAmbientLightColor, 1.0);
+     // uDiffuseLightColor = uPMatrix*uMVMatrix*vec4(uDiffuseLightColor, 1.0);
+     // uSpecularLightColor = uPMatrix*uMVMatrix*vec4(uSpecularLightColor, 1.0);
+     vec4 vertexPositionEye4 = uMVMatrix * vec4(aVertexPosition, 1.0);
+     vec3 vertexPositionEye3 = vertexPositionEye4.xyz / vertexPositionEye4.w;
+         // Calculate the vector (l) to the light source
+     vec3 vectorToLightSource = normalize(uLightPosition - vertexPositionEye3);
+
+      // Transform the normal (n) to eye coordinates
+     vec3 normalEye = normalize(uNMatrix * aVertexNormal);
+     // Diffuse Light
+     float diffuseLightWeightning = max(dot(normalEye, 
+                                      vectorToLightSource), 0.0);
+                                         
+      // Specular Light
+      vec3 reflectionVector = normalize(reflect(-vectorToLightSource, 
+                                               normalEye));
+
+      vec3 viewVectorEye = -normalize(vertexPositionEye3);
+
+      float rdotv = max(dot(reflectionVector, viewVectorEye), 0.0);
+      float specularLightWeightning = pow(rdotv, shininess);
+      // Sum all parts of lighting
+      vColor = vec4((uAmbientLightColor
+                  + uDiffuseLightColor * diffuseLightWeightning
+                  + uSpecularLightColor * specularLightWeightning),1.0);  
+
+}
+</script>
+  
+<script id="shader-fs" type="x-shader/x-fragment">
+precision mediump float;
+
+varying vec4 vColor;
+varying vec4 vPosition;
+varying vec3 vTransformedNormal;
+
+uniform samplerCube uCubeSampler;
+ 
+void main() {
+  vec3 normal = normalize(vTransformedNormal);
+  vec3 eyeDirection = normalize(-vPosition.xyz);
+  vec3 lookup = reflect(eyeDirection, normal);
+  gl_FragColor = textureCube(uCubeSampler, -lookup) + vColor;
+ 
+}
+</script>
+
+<script id="terrain-vs" type="x-shader/x-vertex">
+   attribute vec3 aVertexNormal1;
+   attribute vec3 aVertexPosition1;
+   attribute vec2 aTexCoord;
+  // attribute vec4 aColor;
+   
+   uniform mat4 uMVMatrix1;
+   uniform mat4 uPMatrix1;
+   uniform mat3 uNMatrix1;
+
+   uniform sampler2D uImage;
+   
+   varying vec4 vPosition;
+   varying vec4 vColor;
+   varying vec2 vTexCoord;
+   varying vec4 vtexColor;
+
+   
+   void main(void) { 
+     
+     vPosition = vec4(aVertexPosition1, 1.0);
+     // use R component FOR Height_MAP
+     vPosition.z = texture2D(uImage, aTexCoord).x -1.0;
+     gl_Position = uPMatrix1*uMVMatrix1*vPosition;
+     vTexCoord = aTexCoord;
+     vtexColor = texture2D(uImage, aTexCoord);
+  
+    }
+</script>
+
+<script id="terrain-fs" type="x-shader/x-fragment">
+precision mediump float;
+
+varying vec4 vColor;
+varying vec2 vTexCoord;
+varying vec4 vtexColor;
+void main() {
+
+        gl_FragColor=vtexColor;
+}
+</script>
+
+<script src="jquery-2.1.0.min.js"></script>
+<script src="gl-matrix-min.js"></script> 
+<script src="webgl-utils.js"></script>   
+<script src="terrainModeling.js"></script>  
+<script src="HelloTexture.js"></script> 
+<script src="readFile.js"></script>
+
+<body onload="startup();">
+<h3>Quan Wan &nbsp CS418 MP3: Teapot</h3>
+<canvas id="myGLCanvas" width="1280" height="800">
+</canvas>
+</body>
+</html>
